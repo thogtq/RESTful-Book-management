@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -157,7 +158,30 @@ func updateBook(w http.ResponseWriter, r *http.Request) {
 	return
 }
 func removeBook(w http.ResponseWriter, r *http.Request) {
-
+	params := mux.Vars(r)
+	bookID, _ := strconv.Atoi(params["id"])
+	result, err := db.Exec(
+		"DELETE FROM book WHERE id =?",
+		bookID,
+	)
+	if err != nil {
+		errRes := *newErrorResponse(500, "cannot exec query: "+err.Error())
+		json.NewEncoder(w).Encode(errRes)
+		return
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		errRes := *newErrorResponse(500, "delete fail: "+err.Error())
+		json.NewEncoder(w).Encode(errRes)
+		return
+	}
+	if count == 0 {
+		errRes := *newErrorResponse(404, "invalid book id")
+		json.NewEncoder(w).Encode(errRes)
+		return
+	}
+	json.NewEncoder(w).Encode(newSuccessResponse(""))
+	return
 }
 func newErrorResponse(code int, message string) *map[string]interface{} {
 	errRes := &map[string]interface{}{
