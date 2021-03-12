@@ -77,7 +77,31 @@ func getBooks(w http.ResponseWriter, r *http.Request) {
 	return
 }
 func getBook(w http.ResponseWriter, r *http.Request) {
-
+	params := mux.Vars(r)
+	bookID := params["id"]
+	bookData := book{}
+	row, err := db.Query("SELECT id, title, author, year FROM book WHERE id=?", bookID)
+	if err != nil {
+		errRes := *newErrorResponse(500, "cannot exec query")
+		json.NewEncoder(w).Encode(errRes)
+		return
+	}
+	count := 0
+	for row.Next() {
+		count++
+		if err := row.Scan(&bookData.ID, &bookData.Title, &bookData.Author, &bookData.Year); err != nil {
+			errRes := *newErrorResponse(500, "cannot matching books: "+err.Error())
+			json.NewEncoder(w).Encode(errRes)
+			return
+		}
+	}
+	if count == 0 {
+		errRes := *newErrorResponse(404, "book not found!")
+		json.NewEncoder(w).Encode(errRes)
+		return
+	}
+	json.NewEncoder(w).Encode(bookData)
+	return
 }
 func addBook(w http.ResponseWriter, r *http.Request) {
 
