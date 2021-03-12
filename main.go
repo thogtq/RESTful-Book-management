@@ -104,14 +104,16 @@ func getBook(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-//"INSERT INTO book(title,author,year) VALUES(?,?,?)", params["title"], params["author"], params["year"]
 func addBook(w http.ResponseWriter, r *http.Request) {
 	bookData := book{}
-	json.NewDecoder(r.Body).Decode(&bookData)
-
+	if err := json.NewDecoder(r.Body).Decode(&bookData); err != nil {
+		errRes := *newErrorResponse(500, "cannot matching data: "+err.Error())
+		json.NewEncoder(w).Encode(errRes)
+		return
+	}
 	result, err := db.Exec("INSERT INTO book(title,author,year) VALUES(?,?,?)", bookData.Title, bookData.Author, bookData.Year)
 	if err != nil {
-		errRes := *newErrorResponse(500, "cannot insert query: "+err.Error())
+		errRes := *newErrorResponse(500, "cannot exec query: "+err.Error())
 		json.NewEncoder(w).Encode(errRes)
 		return
 	}
@@ -125,7 +127,34 @@ func addBook(w http.ResponseWriter, r *http.Request) {
 	return
 }
 func updateBook(w http.ResponseWriter, r *http.Request) {
-
+	bookData := book{}
+	if err := json.NewDecoder(r.Body).Decode(&bookData); err != nil {
+		errRes := *newErrorResponse(500, "cannot matching data: "+err.Error())
+		json.NewEncoder(w).Encode(errRes)
+		return
+	}
+	result, err := db.Exec(
+		"UPDATE book set title=?, author=?, year=? WHERE id =?",
+		bookData.Title, bookData.Author, bookData.Year, bookData.ID,
+	)
+	if err != nil {
+		errRes := *newErrorResponse(500, "cannot exec query: "+err.Error())
+		json.NewEncoder(w).Encode(errRes)
+		return
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		errRes := *newErrorResponse(500, "update fail: "+err.Error())
+		json.NewEncoder(w).Encode(errRes)
+		return
+	}
+	if count == 0 {
+		errRes := *newErrorResponse(404, "invalid book id or no new updated data")
+		json.NewEncoder(w).Encode(errRes)
+		return
+	}
+	json.NewEncoder(w).Encode(newSuccessResponse(""))
+	return
 }
 func removeBook(w http.ResponseWriter, r *http.Request) {
 
