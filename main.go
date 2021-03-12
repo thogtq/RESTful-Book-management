@@ -103,8 +103,26 @@ func getBook(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(bookData)
 	return
 }
-func addBook(w http.ResponseWriter, r *http.Request) {
 
+//"INSERT INTO book(title,author,year) VALUES(?,?,?)", params["title"], params["author"], params["year"]
+func addBook(w http.ResponseWriter, r *http.Request) {
+	bookData := book{}
+	json.NewDecoder(r.Body).Decode(&bookData)
+
+	result, err := db.Exec("INSERT INTO book(title,author,year) VALUES(?,?,?)", bookData.Title, bookData.Author, bookData.Year)
+	if err != nil {
+		errRes := *newErrorResponse(500, "cannot insert query: "+err.Error())
+		json.NewEncoder(w).Encode(errRes)
+		return
+	}
+	insertedID, err := result.LastInsertId()
+	if err != nil {
+		errRes := *newErrorResponse(500, "cannot get inserted id: "+err.Error())
+		json.NewEncoder(w).Encode(errRes)
+		return
+	}
+	json.NewEncoder(w).Encode(newSuccessResponse(insertedID))
+	return
 }
 func updateBook(w http.ResponseWriter, r *http.Request) {
 
@@ -114,10 +132,18 @@ func removeBook(w http.ResponseWriter, r *http.Request) {
 }
 func newErrorResponse(code int, message string) *map[string]interface{} {
 	errRes := &map[string]interface{}{
+		"success": false,
 		"error": map[string]interface{}{
 			"code":    code,
 			"message": message,
 		},
 	}
 	return errRes
+}
+func newSuccessResponse(data interface{}) *map[string]interface{} {
+	res := &map[string]interface{}{
+		"success": true,
+		"data":    data,
+	}
+	return res
 }
